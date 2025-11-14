@@ -1,41 +1,64 @@
+import asyncio
 import logging
-from aiogram import Bot, Dispatcher, executor, types
+import os
 
-# --- CONFIGURATION ---
-# Replace 'YOUR_BOT_TOKEN_HERE' with the token you get from BotFather
-API_TOKEN = 'YOUR_BOT_TOKEN_HERE' 
+from aiogram import Bot, Dispatcher, types
+from dotenv import load_dotenv
 
-# Configure logging so you can see what's happening
-logging.basicConfig(level=logging.INFO)
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 # --- BOT INITIALIZATION ---
+# Get bot token from environment
+bot_token = os.getenv("BOT_TOKEN")
+
+if not bot_token:
+    logger.error("BOT_TOKEN not found in environment variables!")
+    raise SystemExit("BOT_TOKEN not found in environment variables!")
+
 # Initialize bot and dispatcher
-bot = Bot(token=API_TOKEN)
+bot = Bot(token=bot_token)
 dp = Dispatcher(bot)
+
+logger.info("Bot initialized successfully")
 
 
 # --- HANDLERS ---
 
 @dp.message_handler(commands=['start', 'help'])
-async def send_welcome(message: types.Message):
-    """
-    This handler will be called when user sends `/start` or `/help` command
-    (or presses the START button)
-    """
+async def send_welcome(message: types.Message) -> None:
+    """Handle /start and /help commands with a personalized greeting."""
+    user_name = message.from_user.first_name or "User"
     
-    # Get user's first name to make the message personal
-    user_name = message.from_user.first_name
-    
-    # Craft the welcome message
-    hello_message = f"👋 Hello, {user_name}!"
-    description = (
+    welcome_text = (
+        f"👋 Hello, {user_name}!\n\n"
         "I am a simple bot created to demonstrate aiogram.\n\n"
         "Right now, I just say hello when you start!"
     )
     
-    # Combine the messages
-    full_message = f"{hello_message}\n\n{description}"
-    
-    # Send the message back to the user
-    # Removed parse_mode since this message doesn't use HTML
-    await message.answer(full_message)
+    await message.answer(welcome_text)
+    logger.info(f"Welcome message sent to user {message.from_user.id}")
+
+async def _main() -> None:
+    """Start the bot polling loop with graceful shutdown."""
+    logger.info("Starting bot polling...")
+    try:
+        await dp.start_polling(bot, skip_updates=True)
+    except KeyboardInterrupt:
+        logger.info("Polling interrupted by user")
+    finally:
+        logger.info("Closing bot session...")
+        await bot.session.close()
+        logger.info("Bot session closed")
+
+
+if __name__ == "__main__":
+    logger.info("Bot application started")
+    asyncio.run(_main())

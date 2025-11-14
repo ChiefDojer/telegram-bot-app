@@ -1,0 +1,64 @@
+name: Deploy Telegram Bot App to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Removed test-trigger dependency so deploy runs on push or manual dispatch
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Connect to Azure VM via SSH and redeploy bot
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "🔹 Current directory on VM:"
+            pwd
+            echo "🔹 Listing home directory:"
+            ls -la ~/
+            
+            # Check if repository exists, clone if not
+            if [ ! -d ~/telegram-bot-app ]; then
+              echo "📦 Repository not found. Cloning from GitHub..."
+              git clone https://github.com/${{ github.repository }} ~/telegram-bot-app
+              echo "✅ Repository cloned successfully"
+            fi
+            
+            cd ~/telegram-bot-app || { echo "❌ Failed to enter repo directory"; exit 1; }
+            echo "🔹 Pulling latest code from GitHub..."
+            git pull origin main
+
+            echo "🔹 Creating .env file with BOT_TOKEN..."
+            echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" > .env
+            echo "LOG_LEVEL=INFO" >> .env
+            echo "✅ .env file created"
+            echo "🔹 Verifying .env file (without showing token)..."
+            if [ -f .env ]; then
+              echo "✅ .env file exists with $(wc -l < .env) lines"
+            else
+              echo "❌ .env file not found!"
+              exit 1
+            fi
+
+            echo "🔹 Stopping and removing telegram-bot-app container only..."
+            sudo docker compose stop telegram-bot-app
+            sudo docker compose rm -f telegram-bot-app
+            echo "🔹 Rebuilding telegram-bot-app service..."
+            sudo docker compose build --no-cache telegram-bot-app
+            echo "🔹 Starting telegram-bot-app container..."
+            sudo docker compose up -d telegram-bot-app
+            echo "🔹 Checking telegram-bot-app container status..."
+            sudo docker compose ps telegram-bot-app
+            echo "🔹 Checking telegram-bot-app logs (last 20 lines)..."
+            sudo docker compose logs --tail=20 telegram-bot-app
+            echo "✅ Telegram bot redeployed successfully on $(hostname)!"

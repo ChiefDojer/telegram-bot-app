@@ -2,7 +2,8 @@ import asyncio
 import logging
 import os
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, Router, types
+from aiogram.filters import Command
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -26,13 +27,15 @@ if not bot_token:
 # Initialize bot and dispatcher
 bot = Bot(token=bot_token)
 dp = Dispatcher()
+router = Router()
+dp.include_router(router)
 
 logger.info("Bot initialized successfully")
 
 
 # --- HANDLERS ---
 
-@dp.message_handler(commands=['start', 'help'])
+@router.message(Command(commands=['start', 'help']))
 async def send_welcome(message: types.Message) -> None:
     """Handle /start and /help commands with a personalized greeting."""
     user_name = message.from_user.first_name or "User"

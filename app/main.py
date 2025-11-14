@@ -25,7 +25,7 @@ if not bot_token:
 
 # Initialize bot and dispatcher
 bot = Bot(token=bot_token)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
 logger.info("Bot initialized successfully")
 

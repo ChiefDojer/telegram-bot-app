@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   telegram-bot-app:
     build: .
     image: telegram-bot-app
     container_name: telegram-bot-app
     restart: unless-stopped
+    mem_limit: 512m   
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

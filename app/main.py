@@ -9,12 +9,23 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Configure logging
+# Get bot name from environment
+BOT_NAME = os.getenv("BOT_NAME", "TelegramBot-APP")
+
+# Configure logging with custom factory to add botname
+class BotNameFilter(logging.Filter):
+    def filter(self, record):
+        record.botname = BOT_NAME
+        return True
+
+log_level = os.getenv("LOG_LEVEL", "INFO")
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=getattr(logging, log_level),
+    format="%(botname)s - %(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
 logger = logging.getLogger(__name__)
+logger.addFilter(BotNameFilter())
 
 # --- BOT INITIALIZATION ---
 # Get bot token from environment
